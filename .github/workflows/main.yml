@@ -16,10 +16,10 @@ jobs:
     - name: Run script on VM
       run: |
         $Username = "${{ secrets.VM_USERNAME }}"
-        $Host = "${{ secrets.VM_HOST }}"
+        $RemoteHost = "${{ secrets.VM_HOST }}"
 
         # Copy the script to the remote Windows machine using PowerShell Remoting
-        Copy-Item -Path "script.bat" -Destination "\\$Host\C$\script.bat" -ToSession (New-PSSession -ComputerName $Host -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username"))
+        Copy-Item -Path "script.bat" -Destination "\\$RemoteHost\C$\script.bat" -ToSession (New-PSSession -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username"))
 
         # Run the script on the remote Windows machine using PowerShell Remoting
-        Invoke-Command -ComputerName $Host -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username") -ScriptBlock { Start-Process -FilePath "C:\script.bat" -Wait }
+        Invoke-Command -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username") -ScriptBlock { Start-Process -FilePath "C:\script.bat" -Wait }
