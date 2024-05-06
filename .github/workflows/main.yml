@@ -13,8 +13,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Copy script to VM
-      run: scp -i ${{ secrets.SSH_PRIVATE_KEY }} script.bat ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }}:C:\script.bat
-
     - name: Run script on VM
-      run: ssh -i ${{ secrets.SSH_PRIVATE_KEY }} ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }} 'powershell -Command "Start-Process -FilePath C:\script.bat -Wait"'
+      run: |
+        $Username = "${{ secrets.VM_USERNAME }}"
+        $Host = "${{ secrets.VM_HOST }}"
+
+        # Copy the script to the remote Windows machine using PowerShell Remoting
+        Copy-Item -Path "script.bat" -Destination "\\$Host\C$\script.bat" -ToSession (New-PSSession -ComputerName $Host -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username"))
+
+        # Run the script on the remote Windows machine using PowerShell Remoting
+        Invoke-Command -ComputerName $Host -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username") -ScriptBlock { Start-Process -FilePath "C:\script.bat" -Wait }
