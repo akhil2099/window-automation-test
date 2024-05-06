@@ -1,29 +1,18 @@
-name: Create File on Windows Desktop
+@echo off
+setlocal
 
-on:
-  push:
-    branches:
-      - main
+:: Specify the folder name and file name
+set "folderName=MyFolder"
+set "fileName=MyFile.txt"
 
-jobs:
-  create-file:
-    runs-on: windows-latest
+:: Get the desktop path
+for /f "tokens=2 delims==" %%I in ('wmic useraccount where name='%username%' get desktop ^| findstr /r /v "^$"') do set "desktopPath=%%I"
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+:: Create the folder on the desktop
+mkdir "%desktopPath%\%folderName%"
 
-    - name: Run script on VM
-      shell: powershell
-      run: |
-        $Username = "${{ secrets.VM_USERNAME }}"
-        $Password = ConvertTo-SecureString "${{ secrets.VM_PASSWORD }}" -AsPlainText -Force
-        $Credential = New-Object System.Management.Automation.PSCredential($Username, $Password)
-        $Session = New-PSSession -ComputerName "${{ secrets.VM_HOST }}" -Credential $Credential
+:: Create the file inside the folder
+copy NUL "%desktopPath%\%folderName%\%fileName%" > nul
 
-        Invoke-Command -Session $Session -ScriptBlock {
-          param($ScriptPath)
-          Start-Process -FilePath $ScriptPath -Wait
-        } -ArgumentList "C:\path\to\your\script.bat"
-
-        Remove-PSSession -Session $Session
+echo Folder "%folderName%" and file "%fileName%" created on the desktop.
+pause
