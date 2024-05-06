@@ -13,17 +13,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Copy script to VM
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.VM_HOST }}
+        username: ${{ secrets.VM_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: script.bat  # Assuming the script is named script.bat in your repository
+        target: C:\script.bat  # Copy the script to the C:\ drive of the VM
+
     - name: Run script on VM
       shell: powershell
+      env:
+        USERNAME: ${{ secrets.VM_USERNAME }}
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        HOST: ${{ secrets.VM_HOST }}
       run: |
-        $Username = "${{ secrets.VM_USERNAME }}"
-        $Password = ConvertTo-SecureString "${{ secrets.VM_PASSWORD }}" -AsPlainText -Force
-        $Credential = New-Object System.Management.Automation.PSCredential($Username, $Password)
-        $Session = New-PSSession -ComputerName "${{ secrets.VM_HOST }}" -Credential $Credential
+        $Username = $env:USERNAME
+        $SSHPrivateKey = $env:SSH_PRIVATE_KEY
+        $Host = $env:HOST
 
-        Invoke-Command -Session $Session -ScriptBlock {
-          param($ScriptPath)
-          Start-Process -FilePath $ScriptPath -Wait
-        } -ArgumentList "C:\path\to\your\script.bat"
-
-        Remove-PSSession -Session $Session
+        # Establish SSH connection and execute script on remote Windows machine
+        $Command = "powershell -Command `"Start-Process -FilePath 'C:\script.bat' -Wait`""
+        $SshCommand = "ssh -i $($SSHKeyFile.FullName) $Username@$Host $Command"
+        Invoke-Expression -Command $SshCommand
