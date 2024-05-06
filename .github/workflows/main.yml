@@ -1,25 +1,44 @@
-name: Build Module
+name: Run create_file.bat on Windows VM (Foreground)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  build:
+  run-script:
     runs-on: windows-latest
+    env:
+      VM_HOST: ${{ secrets.VM_HOST }}
+      VM_USERNAME: ${{ secrets.VM_USERNAME }}
+      # Add a step to set the private key as a variable (avoid hardcoding)
+      PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Run script on VM
-      run: |
-        $Username = "${{ secrets.VM_USERNAME }}"
-        $RemoteHost = "${{ secrets.VM_HOST }}"
+      - name: Upload SSH private key (avoid pushing to logs)
+        uses: shivamathew/ssh-key-action@v1
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USERNAME }}
+          key: ${{ env.PRIVATE_KEY }}
+          # Optional: configure passphrase if needed
+          # passphrase: ${{ secrets.SSH_PASSPHRASE }}  # Uncomment if applicable
 
-        # Copy the build script to the remote Windows machine using PowerShell Remoting
-        Copy-Item -Path "build.ps1" -Destination "\\$RemoteHost\C$\build.ps1" -ToSession (New-PSSession -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username"))
+      - name: Connect to Windows VM using WinRM
+        uses: microsoft/windows-update@v1.1.1
+        with:
+          login: ${{ env.VM_USERNAME }}
+          # Use a personal access token with WinRM permissions instead of hardcoding password
+          password: ${{ secrets.WINRM_ACCESS_TOKEN }}
+          # Optional: configure WinRM port if non-standard
+          # port: 5985  # Uncomment if needed
 
-        # Run the build script on the remote Windows machine using PowerShell Remoting
-        Invoke-Command -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username") -ScriptBlock { & "C:\build.ps1" -Task ModuleBuild }
+      - name: Run create_file.bat in foreground
+        run: |
+          # Establish WinRM session with persistence (optional for longer tasks)
+          Enter-PSSession -ComputerName ${{ env.VM_HOST }} -UseSSL -Authentication Credssp -Credential (New-Object System.Management.Automation.PSCredential (${env:VM_USERNAME}, (ConvertTo-SecureString -AsPlainText -Force -String $env:WINRM_ACCESS_TOKEN).ConvertTo-UnsecureString())))
+
+          # Execute create_file.bat and wait for completion
+          Start-Process "C:\Users\vboxuser\create_file.bat" -Wait -NoNewWindow  # Adjust path if needed
