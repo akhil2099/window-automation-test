@@ -13,15 +13,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Copy script to VM
-      run: |
-        scp -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} create_file.bat ${{ secrets.VM_USERNAME }}@${{ secrets.VM_HOST }}:C:\create_file.bat
-
     - name: Run script on VM
+      shell: powershell
       run: |
-        $script = @"
-        Invoke-Command -ComputerName ${secrets.VM_HOST} -ScriptBlock {
-          C:\create_file.bat
-        } -Credential (New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList "${secrets.VM_USERNAME}", (ConvertTo-SecureString -String "${secrets.VM_PASSWORD}" -AsPlainText -Force))
-"@
-        Invoke-Expression -Command $script
+        $Username = "${{ secrets.VM_USERNAME }}"
+        $Password = ConvertTo-SecureString "${{ secrets.VM_PASSWORD }}" -AsPlainText -Force
+        $Credential = New-Object System.Management.Automation.PSCredential($Username, $Password)
+        $Session = New-PSSession -ComputerName "${{ secrets.VM_HOST }}" -Credential $Credential
+
+        Invoke-Command -Session $Session -ScriptBlock {
+          param($ScriptPath)
+          Start-Process -FilePath $ScriptPath -Wait
+        } -ArgumentList "C:\path\to\your\script.bat"
+
+        Remove-PSSession -Session $Session
