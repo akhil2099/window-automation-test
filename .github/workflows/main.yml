@@ -27,7 +27,7 @@ jobs:
           # passphrase: ${{ secrets.SSH_PASSPHRASE }}  # Uncomment if applicable
 
       - name: Connect to Windows VM using WinRM
-        uses: microsoft/windows-update@v1.1.1
+        uses: psmodule/wins-update@v2.1.4
         with:
           login: ${{ env.VM_USERNAME }}
           # Use a personal access token with WinRM permissions instead of hardcoding password
