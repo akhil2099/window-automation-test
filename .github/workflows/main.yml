@@ -13,12 +13,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Build Module
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.VM_HOST }}
-        username: ${{ secrets.VM_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 22
-        script: |
-          ./build.ps1 -Task ModuleBuild
+    - name: Run script on VM
+      run: |
+        $Username = "${{ secrets.VM_USERNAME }}"
+        $RemoteHost = "${{ secrets.VM_HOST }}"
+
+        # Copy the build script to the remote Windows machine using PowerShell Remoting
+        Copy-Item -Path "build.ps1" -Destination "\\$RemoteHost\C$\build.ps1" -ToSession (New-PSSession -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username"))
+
+        # Run the build script on the remote Windows machine using PowerShell Remoting
+        Invoke-Command -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username") -ScriptBlock { & "C:\build.ps1" -Task ModuleBuild }
