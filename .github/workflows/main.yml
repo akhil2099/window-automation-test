@@ -1,4 +1,4 @@
-name: Create File on Windows Desktop
+name: Build Module
 
 on:
   push:
@@ -6,20 +6,19 @@ on:
       - main
 
 jobs:
-  create-file:
+  build:
     runs-on: windows-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Run script on VM
-      run: |
-        $Username = "${{ secrets.VM_USERNAME }}"
-        $RemoteHost = "${{ secrets.VM_HOST }}"
-
-        # Copy the script to the remote Windows machine using PowerShell Remoting
-        Copy-Item -Path "script.bat" -Destination "\\$RemoteHost\C$\script.bat" -ToSession (New-PSSession -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username"))
-
-        # Run the script on the remote Windows machine using PowerShell Remoting
-        Invoke-Command -ComputerName $RemoteHost -Credential (Get-Credential -UserName $Username -Message "Enter password for $Username") -ScriptBlock { Start-Process -FilePath "C:\script.bat" -Wait }
+    - name: Build Module
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VM_HOST }}
+        username: ${{ secrets.VM_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          ./build.ps1 -Task ModuleBuild
