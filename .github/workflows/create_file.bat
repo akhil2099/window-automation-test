@@ -1,23 +1,29 @@
-@echo off
-setlocal
+name: Create File on Windows Desktop
 
-REM Define the folder name and file name
-set "folderName=MyFolder"
-set "fileName=MyFile.txt"
+on:
+  push:
+    branches:
+      - main
 
-REM Get the path to the desktop folder
-for /f "tokens=2 delims==;" %%A in ('wmic path win32_userprofile get desktop^|findstr /r /v "^$"') do (
-    set "desktopPath=%%A"
-)
+jobs:
+  create-file:
+    runs-on: windows-latest
 
-REM Create the folder if it doesn't exist
-if not exist "%desktopPath%\%folderName%\" (
-    mkdir "%desktopPath%\%folderName%"
-)
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-REM Create the file inside the folder
-type nul > "%desktopPath%\%folderName%\%fileName%"
+    - name: Run script on VM
+      shell: powershell
+      run: |
+        $Username = "${{ secrets.VM_USERNAME }}"
+        $Password = ConvertTo-SecureString "${{ secrets.VM_PASSWORD }}" -AsPlainText -Force
+        $Credential = New-Object System.Management.Automation.PSCredential($Username, $Password)
+        $Session = New-PSSession -ComputerName "${{ secrets.VM_HOST }}" -Credential $Credential
 
-echo File created successfully.
+        Invoke-Command -Session $Session -ScriptBlock {
+          param($ScriptPath)
+          Start-Process -FilePath $ScriptPath -Wait
+        } -ArgumentList "C:\path\to\your\script.bat"
 
-endlocal
+        Remove-PSSession -Session $Session
